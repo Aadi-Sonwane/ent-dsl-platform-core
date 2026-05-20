@@ -1,0 +1,72 @@
+version: '3.8'
+
+networks:
+  buildos-network:
+    name: buildos-enterprise-net
+    driver: bridge
+
+services:
+  # Standard Vanilla Jenkins Controller
+  jenkins:
+    image: jenkins/jenkins:lts-jdk21
+    container_name: buildos-jenkins
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_data:/var/jenkins_home
+    networks:
+      - buildos-network
+    restart: unless-stopped
+
+  # Standard Worker Agent (Clean Container OS)
+  buildos-agent:
+    image: ubuntu:24.04
+    container_name: buildos-agent
+    networks:
+      - buildos-network
+    command: tail -f /dev/null
+    restart: unless-stopped
+
+  # Standard Asset Repository (Nexus)
+  nexus:
+    image: sonatype/nexus3:latest
+    container_name: buildos-nexus
+    ports:
+      - "8081:8081"
+    volumes:
+      - nexus_data:/nexus-data
+    networks:
+      - buildos-network
+    restart: unless-stopped
+
+  # Standard Code Quality Engine (SonarQube)
+  sonarqube:
+    image: sonarqube:community
+    container_name: buildos-sonarqube
+    ports:
+      - "9000:9000"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+    networks:
+      - buildos-network
+    restart: unless-stopped
+
+  # Standard Git Repository Server (Gitea)
+  git-server:
+    image: gitea/gitea:latest
+    container_name: buildos-git
+    ports:
+      - "3000:3000"
+      - "2222:22"
+    volumes:
+      - gitea_data:/data
+    networks:
+      - buildos-network
+    restart: unless-stopped
+
+volumes:
+  jenkins_data:
+  nexus_data:
+  sonarqube_data:
+  gitea_data:

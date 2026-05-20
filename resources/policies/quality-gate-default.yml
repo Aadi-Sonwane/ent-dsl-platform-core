@@ -1,0 +1,42 @@
+# Quality Gate Policy
+# Evaluated by QualityGateManager during Stages 31-33.
+# Defines composite quality gate thresholds across coverage, SonarQube, and security.
+
+qualityGate:
+  name: "buildos-quality-gate-default"
+  version: "1.0"
+  description: "Default quality gate for BuildOS Platform pipelines"
+
+coverage:
+  lineCoverageThreshold: 80
+  branchCoverageThreshold: 70
+  failOnBelowThreshold: true
+  requiredReports:
+    - "jacoco"
+    - "cobertura"
+
+sonarQube:
+  qualityGateStatusRequired: "OK"
+  failOnMissingQualityGate: true
+  maxPollingTimeMs: 300000
+  pollIntervalMs: 5000
+  newCodeOnly: true
+  metrics:
+    - "coverage"
+    - "duplicated_lines_density"
+    - "security_rating"
+    - "reliability_rating"
+    - "maintainability_rating"
+
+security:
+  maxCriticalVulnerabilities: 0
+  maxHighVulnerabilities: 5
+  maxMediumVulnerabilities: 20
+  failOnExposedSecrets: true
+  requiredSbomFormat: "cyclonedx"
+  requireSigning: false
+
+composite:
+  mode: "ALL"  # ALL = all gates must pass, ANY = at least one must pass
+  failFast: true
+  produceEvidenceReport: true

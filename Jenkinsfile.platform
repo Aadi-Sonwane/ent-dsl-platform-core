@@ -1,0 +1,22 @@
+/*
+ * BuildOS Platform — Immutable Pipeline Definition
+ *
+ * This Jenkinsfile is OWNED by the BuildOS Platform team and MUST NOT be
+ * overridden by project repositories. Multibranch pipeline jobs are locked
+ * to this file path — developers cannot change the pipeline.
+ *
+ * It serves as the fixed entry point from the Control Plane's Job DSL
+ * into the Data Plane's PipelineExecutionFramework.
+ *
+ * @Library syntax pins the library version via Jenkins global configuration;
+ *   the version is omitted here (default-branch / pinned by admin).
+ */
+
+@Library('buildos-platform-library')_
+
+/*
+ * runBuildOSLifecycle is a Groovy CPS global variable (vars/runBuildOSLifecycle.groovy).
+ * It reads project.yml from the workspace root, instantiates PipelineExecutionFramework,
+ * and executes all 50 stages of the BuildOS lifecycle.
+ */
+runBuildOSLifecycle()

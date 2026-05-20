@@ -1,0 +1,68 @@
+jenkins:
+  systemMessage: "BuildOS Production Orchestration Plane Framework — Automating 50-Stage Lifecycles."
+  
+  # 1. Automate Security Realms & Baseline Administrator Account
+  securityRealm:
+    local:
+      allowsSignup: false
+      enableCaptcha: false
+      users:
+        - id: "aadu"
+          password: "password123"
+          lastName: "Administrator"
+          description: "Master Infrastructure Platform Admin Account"
+
+  authorizationStrategy:
+    fullControlOnceLoggedIn:
+
+  # 2. Automatically Bind the Pre-loaded Trivy/Maven Worker Agent Container
+  nodes:
+    - permanent:
+        name: "buildos-agent-node"
+        remoteFS: "/home/jenkins/workspace"
+        labelString: "hardened-immutable-jdk17-builder"
+        numExecutors: 4
+        mode: EXCLUSIVE
+        retentionStrategy: "always"
+        launcher:
+          jnlp:
+            workDirSettings:
+              disabled: true
+
+# 3. Inject Platform Integration Passphrases Into the Secured Storage Vault
+credentials:
+  systemCredentialsProvider:
+    domainCredentials:
+      - credentials:
+          - usernamePassword:
+              scope: GLOBAL
+              id: "nexus-admin-credentials"
+              username: "admin"
+              password: "admin-password-placeholder"
+              description: "Vaulted Access Core Token for Multi-Tenant Repository Uploads"
+          - usernamePassword:
+              scope: GLOBAL
+              id: "sonarqube-token-credentials"
+              username: "admin"
+              password: "sonarqube-token-placeholder"
+              description: "Quality Gate Webhook Sync Credentials"
+          - string:
+              scope: GLOBAL
+              id: "gpg-passphrase"
+              secret: "secure-kms-gpg-key-passphrase"
+              description: "Artifact Signer Validation Key"
+
+# 4. Automatically Register and Wire Up Your 54 Shared Library Files
+unclassified:
+  globalLibraries:
+    libraries:
+      - name: "buildos-platform-library"
+        defaultVersion: "main"
+        implicit: true
+        allowVersionOverride: false
+        includeInChangesets: false
+        retrievalMethod:
+          modernSCM:
+            scm:
+              localPath:
+                path: "/var/jenkins_home/pipeline-libs/buildos-platform"

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                              https://maven.apache.org/xsd/settings-1.0.0.xsd">
+
+  <!--
+    BuildOS Platform — Dynamic Maven Settings Template
+    Generated in-memory by DynamicMavenSettingsGenerator.
+    Credentials use environment variable placeholders — never literal secrets.
+    mirrorOf=* forces all dependency traffic through the corporate Nexus.
+  -->
+
+  <servers>
+    <server>
+      <id>buildos-nexus-snapshots</id>
+      <username>${env.NEXUS_USER}</username>
+      <password>${env.NEXUS_PASS}</password>
+    </server>
+    <server>
+      <id>buildos-nexus-releases</id>
+      <username>${env.NEXUS_USER}</username>
+      <password>${env.NEXUS_PASS}</password>
+    </server>
+    <server>
+      <id>buildos-nexus-group</id>
+      <username>${env.NEXUS_USER}</username>
+      <password>${env.NEXUS_PASS}</password>
+    </server>
+  </servers>
+
+  <mirrors>
+    <mirror>
+      <id>buildos-nexus-mirror</id>
+      <mirrorOf>*</mirrorOf>
+      <name>BuildOS Corporate Nexus Mirror</name>
+      <url>${BUILDOS_NEXUS_URL}/repository/maven-group/</url>
+    </mirror>
+  </mirrors>
+
+  <profiles>
+    <profile>
+      <id>buildos-enterprise</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <repositories>
+        <repository>
+          <id>buildos-nexus-group</id>
+          <url>${BUILDOS_NEXUS_URL}/repository/maven-group/</url>
+          <releases>
+            <enabled>true</enabled>
+            <updatePolicy>never</updatePolicy>
+          </releases>
+          <snapshots>
+            <enabled>true</enabled>
+            <updatePolicy>always</updatePolicy>
+          </snapshots>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>buildos-nexus-group</id>
+          <url>${BUILDOS_NEXUS_URL}/repository/maven-group/</url>
+          <releases>
+            <enabled>true</enabled>
+            <updatePolicy>never</updatePolicy>
+          </releases>
+          <snapshots>
+            <enabled>true</enabled>
+            <updatePolicy>always</updatePolicy>
+          </snapshots>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+  </profiles>
+
+  <activeProfiles>
+    <activeProfile>buildos-enterprise</activeProfile>
+  </activeProfiles>
+
+</settings>

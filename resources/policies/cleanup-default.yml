@@ -1,0 +1,34 @@
+# Default Cleanup Policy
+# Applied by CleanupPolicyManager during Nexus provisioning (Stage 14).
+# These policies are created with idempotent HTTP semantics.
+
+cleanupPolicies:
+  - name: "buildos-snapshot-cleanup-30days"
+    format: "maven2"
+    notes: "Remove snapshot components not downloaded in 30 days"
+    criteria:
+      lastDownloaded: 30
+      lastBlobUpdated: 45
+    action: "delete"
+
+  - name: "buildos-release-cleanup-180days"
+    format: "maven2"
+    notes: "Remove release components not downloaded in 180 days"
+    criteria:
+      lastDownloaded: 180
+      lastBlobUpdated: 365
+    action: "delete"
+
+  - name: "buildos-proxy-cache-cleanup-7days"
+    format: "maven2"
+    notes: "Clear proxy cache entries older than 7 days"
+    criteria:
+      lastBlobUpdated: 7
+    action: "delete"
+
+  - name: "buildos-temp-artifacts-cleanup-1day"
+    format: "ALL_FORMATS"
+    notes: "Remove temporary build artifacts after 24 hours"
+    criteria:
+      lastDownloaded: 1
+    action: "delete"

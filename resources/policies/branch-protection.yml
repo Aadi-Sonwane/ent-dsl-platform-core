@@ -1,0 +1,50 @@
+# Branch Protection Policy
+# Enforced by BranchProtectionManager during Stage 09.
+# Protected branches require compliance checks before merging.
+
+policy:
+  name: "branch-protection-default"
+  version: "1.0"
+  description: "Default branch protection rules for BuildOS Platform pipelines"
+
+rules:
+  - branch: "main"
+    requirePullRequest: true
+    requireStatusChecks: true
+    requiredStatusChecks:
+      - "BuildOS Lifecycle"
+      - "Quality Gate"
+      - "Security Scan"
+    dismissStaleReviews: true
+    blockForcePush: true
+    blockDeletion: true
+    requireLinearHistory: false
+    enforceForAdmins: true
+
+  - branch: "release/*"
+    requirePullRequest: true
+    requireStatusChecks: true
+    requiredStatusChecks:
+      - "BuildOS Lifecycle"
+      - "Quality Gate"
+    dismissStaleReviews: false
+    blockForcePush: true
+    blockDeletion: false
+    requireLinearHistory: false
+    enforceForAdmins: true
+
+  - branch: "develop"
+    requirePullRequest: true
+    requireStatusChecks: true
+    requiredStatusChecks:
+      - "BuildOS Lifecycle"
+    dismissStaleReviews: false
+    blockForcePush: false
+    blockDeletion: false
+    requireLinearHistory: true
+    enforceForAdmins: false
+
+exceptions:
+  - branch: "jenkinsfile-test-*"
+    reason: "Temporary branches for pipeline testing — protection bypass allowed"
+    bypassProtection: true

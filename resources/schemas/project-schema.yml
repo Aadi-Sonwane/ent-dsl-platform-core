@@ -1,0 +1,564 @@
+# BuildOS Platform — project.yml Schema
+# Validates all 8 configuration sections before any provisioning or build action.
+version: "1.0"
+sections:
+  project:
+    required: true
+    fields:
+      metadata:
+        required: true
+        fields:
+          projectName:
+            type: string
+            required: true
+            pattern: "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+            minLength: 2
+            maxLength: 64
+            description: "DNS-1123 subdomain — used for folder names, repo IDs, artifact prefixes"
+          businessUnit:
+            type: string
+            required: true
+            pattern: "^[A-Z][a-zA-Z0-9-]{2,32}$"
+            description: "Enterprise business unit (e.g. 'PlatformEngineering', 'Payments')"
+          team:
+            type: string
+            required: true
+            pattern: "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+            minLength: 2
+            maxLength: 48
+          repositoryUrl:
+            type: string
+            required: true
+            pattern: "^https?://.*"
+            description: "SCM repository HTTPS URL for multibranch configuration"
+          scmCredentialsId:
+            type: string
+            required: false
+            default: "enterprise-platform-vcs-ssh-key"
+          description:
+            type: string
+            required: false
+            maxLength: 1024
+          tags:
+            type: list
+            required: false
+            itemType: string
+      version:
+        type: string
+        required: false
+        pattern: "^\\d+\\.\\d+\\.\\d+(-SNAPSHOT)?$"
+        default: "1.0.0-SNAPSHOT"
+      parent:
+        type: map
+        required: false
+        fields:
+          ref:
+            type: string
+            required: true
+            pattern: "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+          inherit:
+            type: list
+            required: false
+            itemType: string
+            allowedValues:
+              - "nexus"
+              - "security"
+              - "quality"
+              - "maven"
+              - "branchGovernance"
+              - "rbac"
+              - "policies"
+              - "observability"
+
+  nexus:
+    required: false
+    fields:
+      url:
+        type: string
+        required: true
+        pattern: "^https?://[a-zA-Z0-9._:-]+(:\\d+)?(/.*)?$"
+        description: "Nexus Repository Manager base URL"
+      credentialsId:
+        type: string
+        required: false
+        default: "enterprise-nexus-credentials"
+      blobStore:
+        type: map
+        required: false
+        fields:
+          name:
+            type: string
+            required: false
+            pattern: "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
+            maxLength: 64
+          path:
+            type: string
+            required: false
+          softQuota:
+            type: map
+            required: false
+            fields:
+              type:
+                type: string
+                required: false
+                allowedValues: ["space", "maxComponents"]
+              limit:
+                type: number
+                required: false
+                minimum: 1
+      repositories:
+        type: map
+        required: false
+        fields:
+          snapshot:
+            type: map
+            required: false
+            fields:
+              format:
+                type: string
+                required: false
+                default: "maven2"
+              versionPolicy:
+                type: string
+                required: false
+                default: "SNAPSHOT"
+              writePolicy:
+                type: string
+                required: false
+                default: "ALLOW"
+              cleanup:
+                type: map
+                required: false
+                fields:
+                  policyNames:
+                    type: list
+                    required: false
+                    itemType: string
+          release:
+            type: map
+            required: false
+            fields:
+              format:
+                type: string
+                required: false
+                default: "maven2"
+              versionPolicy:
+                type: string
+                required: false
+                default: "RELEASE"
+              writePolicy:
+                type: string
+                required: false
+                default: "ALLOW_ONCE"
+              cleanup:
+                type: map
+                required: false
+                fields:
+                  policyNames:
+                    type: list
+                    required: false
+                    itemType: string
+          group:
+            type: map
+            required: false
+            fields:
+              format:
+                type: string
+                required: false
+                default: "maven2"
+              memberRepositories:
+                type: list
+                required: false
+                itemType: string
+      cleanupPolicies:
+        type: list
+        required: false
+        itemType: map
+        fields:
+          name:
+            type: string
+            required: true
+          format:
+            type: string
+            required: false
+            default: "ALL_FORMATS"
+          criteria:
+            type: map
+            required: false
+            fields:
+              lastDownloaded:
+                type: number
+                required: false
+                minimum: 1
+              lastBlobUpdated:
+                type: number
+                required: false
+                minimum: 1
+              releaseType:
+                type: list
+                required: false
+                itemType: string
+              regex:
+                type: string
+                required: false
+              formatAssetRegex:
+                type: string
+                required: false
+
+  branchGovernance:
+    required: false
+    fields:
+      includePatterns:
+        type: list
+        required: false
+        itemType: string
+        description: "Regex patterns for allowed branches (e.g. '^main$', '^release/.*', '^feature/.*')"
+      excludePatterns:
+        type: list
+        required: false
+        itemType: string
+        description: "Regex patterns for excluded branches"
+      protectedBranches:
+        type: list
+        required: false
+        itemType: string
+        description: "List of branch names requiring special enforcement"
+
+  rbac:
+    required: false
+    fields:
+      roles:
+        type: list
+        required: false
+        itemType: map
+        fields:
+          name:
+            type: string
+            required: true
+          permissions:
+            type: list
+            required: true
+            itemType: string
+            allowedValues:
+              - "read"
+              - "build"
+              - "cancel"
+              - "configure"
+              - "admin"
+      folderAuth:
+        type: map
+        required: false
+        fields:
+          useFolderBasedAuth:
+            type: boolean
+            required: false
+            default: true
+          admins:
+            type: list
+            required: false
+            itemType: string
+          developers:
+            type: list
+            required: false
+            itemType: string
+      teams:
+        type: list
+        required: false
+        itemType: map
+        fields:
+          name:
+            type: string
+            required: true
+            pattern: "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+          namespace:
+            type: string
+            required: false
+          members:
+            type: list
+            required: false
+            itemType: string
+          crossTeamAccess:
+            type: list
+            required: false
+            itemType: string
+
+  maven:
+    required: false
+    fields:
+      pomPath:
+        type: string
+        required: false
+        default: "pom.xml"
+      settingsTemplate:
+        type: string
+        required: false
+      mirrorOf:
+        type: string
+        required: false
+        default: "*"
+      skipTests:
+        type: boolean
+        required: false
+        default: false
+      skipAssembly:
+        type: boolean
+        required: false
+        default: false
+      jvmArgs:
+        type: string
+        required: false
+        default: "-Xmx1024m -XX:MaxMetaspaceSize=256m"
+      goals:
+        type: list
+        required: false
+        itemType: string
+      extraArtifacts:
+        type: list
+        required: false
+        itemType: string
+      assembly:
+        type: map
+        required: false
+        fields:
+          name:
+            type: string
+            required: false
+          descriptorRef:
+            type: string
+            required: false
+          formats:
+            type: list
+            required: false
+            itemType: string
+          fileSets:
+            type: list
+            required: false
+            itemType: map
+          dependencySets:
+            type: list
+            required: false
+            itemType: map
+          moduleSets:
+            type: list
+            required: false
+            itemType: map
+      distributionManagement:
+        type: map
+        required: false
+        fields:
+          snapshotRepository:
+            type: map
+            required: false
+            fields:
+              id:
+                type: string
+                required: true
+              url:
+                type: string
+                required: true
+          releaseRepository:
+            type: map
+            required: false
+            fields:
+              id:
+                type: string
+                required: true
+              url:
+                type: string
+                required: true
+
+  security:
+    required: false
+    fields:
+      trivy:
+        type: map
+        required: false
+        fields:
+          severityThreshold:
+            type: string
+            required: false
+            allowedValues: ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"]
+            default: "HIGH"
+          vulnerabilityTypes:
+            type: list
+            required: false
+            itemType: string
+          scanners:
+            type: list
+            required: false
+            itemType: string
+          timeout:
+            type: number
+            required: false
+            minimum: 60
+      dependencyScan:
+        type: map
+        required: false
+        fields:
+          enabled:
+            type: boolean
+            required: false
+            default: true
+          failOnCritical:
+            type: boolean
+            required: false
+            default: true
+          cveThreshold:
+            type: number
+            required: false
+            minimum: 0
+            default: 0
+          suppressionFile:
+            type: string
+            required: false
+      secretScan:
+        type: map
+        required: false
+        fields:
+          enabled:
+            type: boolean
+            required: false
+            default: true
+          failOnCritical:
+            type: boolean
+            required: false
+            default: true
+          entropyThreshold:
+            type: number
+            required: false
+            minimum: 3.0
+            maximum: 8.0
+            default: 4.5
+          excludePatterns:
+            type: list
+            required: false
+            itemType: string
+          includePatterns:
+            type: list
+            required: false
+            itemType: string
+      sbom:
+        type: map
+        required: false
+        fields:
+          enabled:
+            type: boolean
+            required: false
+            default: true
+          format:
+            type: string
+            required: false
+            allowedValues: ["cyclonedx", "spdx"]
+            default: "cyclonedx"
+      signing:
+        type: map
+        required: false
+        fields:
+          enabled:
+            type: boolean
+            required: false
+            default: false
+          keyId:
+            type: string
+            required: false
+          passphraseEnvVar:
+            type: string
+            required: false
+            default: "SIGNING_PASSPHRASE"
+
+  quality:
+    required: false
+    fields:
+      coverage:
+        type: map
+        required: false
+        fields:
+          tool:
+            type: string
+            required: false
+            allowedValues: ["jacoco", "cobertura", "clover"]
+            default: "jacoco"
+          lineCoverageThreshold:
+            type: number
+            required: false
+            minimum: 0
+            maximum: 100
+            default: 80
+          branchCoverageThreshold:
+            type: number
+            required: false
+            minimum: 0
+            maximum: 100
+            default: 70
+          failOnBelowThreshold:
+            type: boolean
+            required: false
+            default: true
+      sonarQube:
+        type: map
+        required: false
+        fields:
+          hostUrl:
+            type: string
+            required: false
+            pattern: "^https?://.*"
+          token:
+            type: string
+            required: false
+          projectKey:
+            type: string
+            required: false
+          qualityGateTimeoutMs:
+            type: number
+            required: false
+            minimum: 10000
+            default: 300000
+          qualityGatePollIntervalMs:
+            type: number
+            required: false
+            minimum: 1000
+            default: 5000
+
+  observability:
+    required: false
+    fields:
+      telemetry:
+        type: map
+        required: false
+        fields:
+          endpoint:
+            type: string
+            required: false
+            pattern: "^https?://.*"
+          enabled:
+            type: boolean
+            required: false
+            default: true
+      audit:
+        type: map
+        required: false
+        fields:
+          enabled:
+            type: boolean
+            required: false
+            default: true
+          logLevel:
+            type: string
+            required: false
+            allowedValues: ["DEBUG", "INFO", "WARN", "ERROR"]
+            default: "INFO"
+      opentelemetry:
+        type: map
+        required: false
+        fields:
+          endpoint:
+            type: string
+            required: false
+            pattern: "^https?://.*"
+          enabled:
+            type: boolean
+            required: false
+            default: true
+          serviceName:
+            type: string
+            required: false

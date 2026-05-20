@@ -1,0 +1,58 @@
+# Default Security Policy
+# Referenced by security stage managers (Stages 23-28) as baseline policy.
+# Project-level config overrides these defaults.
+
+security:
+  name: "buildos-security-default"
+  version: "1.0"
+
+trivy:
+  severityThreshold: "HIGH"
+  vulnerabilityTypes:
+    - "os"
+    - "library"
+  scanners:
+    - "vuln"
+    - "secret"
+    - "misconfig"
+  timeout: 300
+  ignoreUnfixed: false
+  exitCode: 1
+
+dependencyScan:
+  enabled: true
+  failOnCritical: true
+  cveThreshold: 0
+  suppressLicenseScan: false
+  formats:
+    - "pom"
+    - "jar"
+    - "war"
+
+secretScan:
+  enabled: true
+  failOnCritical: true
+  entropyThreshold: 4.5
+  maxFileSizeKb: 1024
+  excludeExtensions:
+    - ".class"
+    - ".jar"
+    - ".war"
+    - ".zip"
+    - ".tar.gz"
+    - ".bin"
+    - ".exe"
+    - ".dll"
+    - ".so"
+    - ".dylib"
+
+sbom:
+  enabled: true
+  format: "cyclonedx"
+  includeTransitive: true
+  outputDir: "target/sbom"
+
+signing:
+  enabled: false
+  algorithm: "SHA256"
+  armor: true
