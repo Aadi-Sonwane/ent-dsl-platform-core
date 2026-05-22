@@ -100,7 +100,7 @@ class ConfigurationInheritanceManager implements Serializable {
                 jdkVersion: "17",
                 mavenVersion: "3.9.6",
                 timezone: "UTC",
-                scmCredentialsId: "enterprise-platform-vcs-ssh-key"
+                scmCredentialsId: "git"
             ],
             build: [
                 skipTests: false,

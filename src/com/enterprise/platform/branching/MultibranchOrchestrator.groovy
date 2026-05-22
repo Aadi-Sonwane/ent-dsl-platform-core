@@ -171,7 +171,7 @@ class MultibranchOrchestrator implements Serializable {
         Map scm = [:]
         scm["url"] = repoUrl
         scm["credentialsId"] = ValidationUtils.isNonEmpty(credentialsId) ?
-            credentialsId : "enterprise-platform-vcs-ssh-key"
+            credentialsId : "git"
         scm["branchDiscovery"] = "ALL_BRANCHES"
 
         List<String> include = []

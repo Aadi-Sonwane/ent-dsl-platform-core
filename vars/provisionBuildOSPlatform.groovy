@@ -43,7 +43,7 @@ def call(String yamlText) {
         String projectName = extractSafely(parsedConfig, "project.metadata.projectName")
         String repoUrl = extractSafely(parsedConfig, "project.metadata.repositoryUrl")
         String scmCredentials = extractSafely(parsedConfig, "project.metadata.scmCredentialsId",
-            "enterprise-platform-vcs-ssh-key")
+            "git")
         Map branchGovernance = parsedConfig.branchGovernance instanceof Map ?
             parsedConfig.branchGovernance : [:]
         Map rbac = parsedConfig.rbac instanceof Map ? parsedConfig.rbac : [:]

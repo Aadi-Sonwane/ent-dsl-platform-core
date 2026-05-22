@@ -5,7 +5,7 @@ class ValidationUtils implements Serializable {
 
     private static final int MAX_STRING_LENGTH = 4096
     private static final String URL_PATTERN = "^(https?|ssh|git)://.*"
-    private static final String EMAIL_PATTERN = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
+    def emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
 
     private ValidationUtils() {
         throw new UnsupportedOperationException("Utility class")
@@ -31,7 +31,7 @@ class ValidationUtils implements Serializable {
 
     static boolean isValidEmail(String email) {
         if (isEmpty(email)) return false
-        return email.matches(EMAIL_PATTERN)
+        return email.matches(emailRegex)
     }
 
     static boolean isValidRegex(String pattern) {

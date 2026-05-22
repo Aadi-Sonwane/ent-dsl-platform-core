@@ -34,7 +34,7 @@ sections:
           scmCredentialsId:
             type: string
             required: false
-            default: "enterprise-platform-vcs-ssh-key"
+            default: "git"
           description:
             type: string
             required: false
