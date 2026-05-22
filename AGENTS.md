@@ -9,9 +9,10 @@
 ## 1. WORKSPACE CORE FILES & SCHEMAS
 
 | File | Path | Purpose |
-|---|---|---|
+|---|---|---|---|
 | Project config | `project.yml` (at repo root) | Custom per-application configuration consumed by the pipeline. |
 | Schema dictionary | `resources/schemas/project-schema.yml` | 564-line, 8-section YAML schema. Every `project.yml` is validated against this before any build action. |
+| Global SSoT config | `resources/platform/global.yml` | Central Single-Source-of-Truth: infrastructure URLs, security defaults, quality governance thresholds. |
 | Parameters reference | `PARAMETERS.MD` (workspace root) | Exhaustive 286-line reference dissecting every `project.yml` parameter with 6-column tables (path, type, required, default, constraints, plain-English description). |
 | Setup guide | `SETUP.MD` (workspace root) | 440-line beginner-friendly manual covering the full 4-node ecosystem setup with port maps, credential walkthroughs, webhook configs, and troubleshooting. |
 | Agent instructions | `AGENTS.md` (THIS FILE) | Long-term memory for agent context recovery. |
@@ -30,6 +31,7 @@
 │   ├── project.yml                    ← example project config
 │   └── pom.xml / src/                 ← Spring Boot app source
 ├── resources/
+│   ├── platform/global.yml           ← SSoT central config (infra URLs, security defaults, quality gates)
 │   ├── schemas/project-schema.yml     ← canonical schema
 │   ├── policies/                      ← branch-protection, cleanup, quality-gate, security defaults
 │   ├── maven/settings-template.xml    ← Maven settings template
@@ -101,6 +103,10 @@ observability:
     enabled: true
     logLevel: "INFO"
 ```
+
+> **Note:** Under the SSoT pattern, many of the blocks above (nexus, security, quality,
+> observability) can be omitted from `project.yml` because their values are inherited
+> from `resources/platform/global.yml`. See `SETUP.MD` section 7 for details.
 
 ---
 

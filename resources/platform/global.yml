@@ -1,0 +1,30 @@
+version: "1.0"
+environment: "local-dev-simulation"
+infrastructure:
+  gitea: "http://buildos-git:3000"
+  jenkins: "http://buildos-jenkins:8080"
+  sonarQube:
+    serverUrl: "http://buildos-sonarqube:9000"
+    installationName: "SonarQube"
+  nexus:
+    serverUrl: "http://buildos-nexus:8081"
+    credentialsId: "enterprise-nexus-credentials"
+security_defaults:
+  trivy:
+    severityThreshold: "HIGH"
+    timeout: 300
+  secretScan:
+    enabled: true
+    entropyThreshold: 4.5
+  dependencyScan:
+    enabled: true
+    failOnCritical: true
+quality_governance:
+  coverage:
+    tool: "jacoco"
+    lineCoverageThreshold: 80
+    branchCoverageThreshold: 70
+    failOnBelowThreshold: true
+  sonarQube:
+    qualityGateTimeoutMs: 300000
+    qualityGatePollIntervalMs: 5000

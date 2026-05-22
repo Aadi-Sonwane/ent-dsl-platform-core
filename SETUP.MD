@@ -256,10 +256,14 @@ Jenkins must know when new code is pushed.
 
 ---
 
-## 7. Expected `project.yml` Layout
+## 7. Slim `project.yml` — Single Source of Truth Pattern
 
-Your project must have a `project.yml` at the repository root. Here is the working
-`demo-java-service` example — you can copy this for any new project:
+With the SSoT architecture, your application's `project.yml` contains only identity
+metadata. Infrastructure URLs, scanner defaults, and quality thresholds live in the
+central `resources/platform/global.yml` file. This lets you change system-wide settings
+without touching any application code.
+
+**Your app's `project.yml`** (minimal — only identity + branch rules):
 
 ```yaml
 version: "1.0"
@@ -268,52 +272,204 @@ project:
     projectName: "demo-java-service"
     businessUnit: "PlatformEngineering"
     team: "core-devops"
-    repositoryUrl: "http://buildos-git:3000/gitea_admin/demo-java-service.git"
+    repositoryUrl: "http://buildos-git:3000/aadu/demo-java-service.git"
     scmCredentialsId: "git"
     description: "Spring Boot Microservice Platform Smoke Test Project Target"
   version: "1.0.0-SNAPSHOT"
-
-nexus:
-  url: "http://buildos-nexus:8081"
-  credentialsId: "enterprise-nexus-credentials"
-
 branchGovernance:
   includePatterns:
     - "^main$"
     - "^feature/.*"
+```
 
-rbac:
-  folderAuth:
-    useFolderBasedAuth: true
-    admins: ["aadu"]
+That is all the app needs. The rest is inherited from the platform.
 
-maven:
-  pomPath: "pom.xml"
-  skipTests: false
+### 7.1 How the Config Merge Works
 
-security:
+```
+Priority 1 (lowest):  Base Framework Defaults  (hard-coded in Groovy classes)
+Priority 2 (medium):  resources/platform/global.yml  (SSoT — infrastructure, policies)
+Priority 3 (highest): <app>/project.yml               (per-app overrides)
+```
+
+The system reads all three layers at pipeline startup and merges them. Your `project.yml`
+overrides only the fields you explicitly set; everything else falls through to `global.yml`
+then to framework defaults.
+
+### 7.2 The Central `global.yml` File
+
+Location: `resources/platform/global.yml` (managed by platform team — one copy for all projects)
+
+```yaml
+version: "1.0"
+environment: "local-dev-simulation"
+infrastructure:
+  gitea: "http://buildos-git:3000"
+  jenkins: "http://buildos-jenkins:8080"
+  sonarQube:
+    serverUrl: "http://buildos-sonarqube:9000"
+    installationName: "SonarQube"
+  nexus:
+    serverUrl: "http://buildos-nexus:8081"
+    credentialsId: "enterprise-nexus-credentials"
+security_defaults:
+  trivy:
+    severityThreshold: "HIGH"
+    timeout: 300
+  secretScan:
+    enabled: true
+    entropyThreshold: 4.5
   dependencyScan:
     enabled: true
     failOnCritical: true
-  secretScan:
-    enabled: true
-
-quality:
+quality_governance:
   coverage:
     tool: "jacoco"
     lineCoverageThreshold: 80
+    branchCoverageThreshold: 70
+    failOnBelowThreshold: true
   sonarQube:
-    hostUrl: "http://buildos-sonarqube:9000"
-
-observability:
-  audit:
-    enabled: true
-    logLevel: "INFO"
+    qualityGateTimeoutMs: 300000
+    qualityGatePollIntervalMs: 5000
 ```
+
+**How to change a system-wide setting:** Edit `global.yml`. For example, to raise
+the coverage bar to 85%, change `lineCoverageThreshold: 80` to `lineCoverageThreshold: 85`.
+All applications pick up the new value on their next build — no code changes needed.
+
+**How to override for one app:** Add the same key to that app's `project.yml`. For example,
+if `demo-java-service` needs a lower threshold, add:
+```yaml
+quality:
+  coverage:
+    lineCoverageThreshold: 60
+```
+This overrides the global value for this app only.
+
+### 7.3 What Belongs Where
+
+| Layer | File | Who manages it | Example contents |
+|---|---|---|---|
+| Base defaults | Groovy source (`src/`) | Platform team | Fallback values when nothing else is set |
+| Global SSoT | `resources/platform/global.yml` | Platform/DevOps team | Infra URLs, security policies, quality gates |
+| App overrides | `<app-root>/project.yml` | Application team | Project name, team, branch rules, per-app overrides |
 
 ---
 
-## 8. Service Port Reference Card
+## 8. Multi-Repository Decoupling (App ←→ Platform Separation)
+
+The platform framework library and your application code live in **completely separate
+Git repositories**. The platform repo (`ent-dsl-platform-core`) contains only Groovy
+pipeline code, schemas, and Docker config — zero application source files. Each
+microservice gets its own standalone repository with its own `project.yml`.
+
+### 8.1 Architecture Overview
+
+```
+┌──────────────────────────────────┐     ┌──────────────────────────────┐
+│  Platform Library (this repo)    │     │  Application Repos (separate)│
+│                                  │     │                              │
+│  /workspace/                     │     │  /tmp/demo-python-service/   │
+│  ├── vars/ (pipeline macros)     │     │  ├── main.py                 │
+│  ├── src/ (Groovy classes)       │     │  ├── requirements.txt        │
+│  ├── resources/platform/         │     │  └── project.yml (slim)      │
+│  │   └── global.yml (SSoT)       │     │                              │
+│  ├── resources/schemas/          │     │  /tmp/demo-node-service/     │
+│  └── docker-compose.yml          │     │  ├── app.js                  │
+│                                  │     │  ├── package.json            │
+│  No application code here!       │     │  └── project.yml (slim)      │
+└──────────────────────────────────┘     └──────────────────────────────┘
+```
+
+### 8.2 How to Onboard a New Microservice
+
+**Step 1 — Create a blank repository in Gitea.**
+
+1. Log into Gitea at **http://localhost:3000**.
+2. Click **"+"** → **"New Repository"**.
+3. Repository name: `demo-python-service` (matches `projectName`).
+4. Visibility: **Private**.
+5. Do **not** check "Initialize this repository" — you will push local content.
+6. Click **"Create Repository"**.
+
+**Step 2 — Prepare your local project folder.**
+
+```bash
+# Scaffold your app and a slim project.yml anywhere (e.g., /tmp/):
+mkdir /tmp/demo-python-service
+cd /tmp/demo-python-service
+
+# Create main.py, requirements.txt (your application code)
+# Create project.yml with ONLY metadata identity:
+
+cat > project.yml << 'EOF'
+version: "1.0"
+project:
+  metadata:
+    projectName: "demo-python-service"
+    businessUnit: "PlatformEngineering"
+    team: "core-devops"
+    repositoryUrl: "http://buildos-git:3000/aadu/demo-python-service.git"
+    scmCredentialsId: "git"
+    description: "Python FastAPI Microservice App Archetype Profile"
+EOF
+```
+
+**Step 3 — Initialize Git and push.**
+
+```bash
+git init
+git branch -m main
+git add .
+git commit -m "chore: initialise microservice scaffold"
+git remote add origin http://localhost:3000/aadu/demo-python-service.git
+git push -u origin main
+```
+
+Use Gitea credentials (`gitea_admin` / `admin123`) when prompted for HTTP auth.
+
+**Step 4 — Configure the Gitea → Jenkins webhook.**
+
+In Gitea: **Repo → Settings → Webhooks → Add Webhook → Gitea**.
+
+| Field | Value |
+|-------|-------|
+| Target URL | `http://buildos-jenkins:8080/git/notifyCommit?url=http://buildos-git:3000/aadu/demo-python-service.git` |
+| HTTP Method | `POST` |
+| Content Type | `application/json` |
+| Trigger | Push events |
+| Active | Checked |
+
+**Step 5 — Jenkins auto-discovers the new project.**
+
+The Jenkins Multibranch Pipeline scans the repository, reads `project.yml`,
+inherits infrastructure URLs from `global.yml`, and runs the 50-stage lifecycle.
+No changes to the platform library are needed.
+
+### 8.3 What Stays in the Platform Library vs. the App Repo
+
+| Layer | Platform Library (`ent-dsl-platform-core`) | App Repository (`demo-*-service`) |
+|---|---|---|
+| Pipeline logic | `vars/`, `src/`, `Jenkinsfile.platform` | — |
+| Global config | `resources/platform/global.yml` | — |
+| Schema | `resources/schemas/project-schema.yml` | — |
+| Docker stack | `docker-compose.yml`, `jenkins.yaml` | — |
+| App source code | **Never** | `main.py` / `app.js`, etc. |
+| App identity | — | `project.yml` (slim — metadata only) |
+| Build artifacts | — | `target/`, `dist/`, `node_modules/` |
+
+### 8.4 Benefits of Decoupling
+
+- **No cross-contamination**: Application code never pollutes the shared library repo.
+- **Independent versioning**: Each microservice versions and releases on its own cadence.
+- **Platform upgrades**: Update the library once — all consuming repos get the new
+  pipeline behavior on their next build (no app code changes).
+- **Polyglot freedom**: Python, Node.js, Java, Go — each service uses its own language
+  and toolchain. The `project.yml` parser is language-agnostic.
+
+---
+
+## 9. Service Port Reference Card
 
 | Service   | Host Port | Internal Port | Container Name       | URL (from browser)          | URL (from other containers)       |
 |-----------|-----------|---------------|----------------------|-----------------------------|-----------------------------------|
@@ -324,79 +480,14 @@ observability:
 
 ---
 
-## 9. Troubleshooting Guide
+## 10. Troubleshooting Guide
 
-### 9.1 "Trailing slash" errors in webhook URLs
-
-```
-Wrong:  http://buildos-jenkins:8080/git/notifyCommit?url=.../
-Right:  http://buildos-jenkins:8080/git/notifyCommit?url=...
-                                               ^^ no slash after .git
-```
-
-Jenkins's `notifyCommit` endpoint is picky — the URL parameter must **not** have a
-trailing slash nor a trailing `.git`. If you see `No git consumers` in the Jenkins
-log, double-check the webhook target URL for extra characters.
-
-### 9.2 Shell "dangling quote" trap
-
-When copying multi-line commands from this guide into a terminal, you might see:
-
-```
->   (this means your quote is still open)
-```
-
-**Fix:** Press **Ctrl+C** to cancel the broken line, then paste again carefully.
-Make sure your copied text includes **both** the opening and closing quote marks,
-and that no smart/curly quotes (`" ” “ ' ’`) replaced straight quotes (`" '`).
-
-### 9.3 Nexus "Connection refused" from Jenkins
-
-If the pipeline fails saying it cannot reach Nexus:
-
-1. Verify Nexus is running:
-   ```bash
-   docker ps | grep buildos-nexus
-   ```
-   (should show `Up` status)
-
-2. From inside Jenkins, test the connection:
-   ```bash
-   docker exec buildos-jenkins curl -s http://buildos-nexus:8081/
-   ```
-   (should return Nexus HTML, not "Connection refused")
-
-3. If Nexus is down, restart it:
-   ```bash
-   docker compose restart nexus
-   ```
-
-### 9.4 Webhook does not trigger Jenkins
-
-1. Check Gitea webhook deliveries: **Repo → Settings → Webhooks → (click webhook)**.
-   Look at **"Recent Deliveries"** — if the last delivery shows a red HTTP status,
-   hover over it to see the error.
-
-2. In Jenkins, check **Manage Jenkins → System Log → "All Jenkins Log"** for any
-   mention of `notifyCommit` or `git`.
-
-3. Make sure the webhook URL uses the **Docker internal hostname**
-   (`http://buildos-jenkins:8080/...`) and not `localhost`.
-
-### 9.5 Docker container keeps restarting
-
-```bash
-docker compose logs --tail=100 -f <service-name>
-```
-
-Replace `<service-name>` with `gitea`, `jenkins`, `sonarqube`, or `nexus`.
-The log will show the startup error. Common causes:
-- **Port conflict**: Another process is already using port 3000/8080/9000/8081.
-  Stop the other process or change the port mapping in `docker-compose.yml`.
-- **Out of memory**: Kill other Docker containers or allocate more RAM to Docker
-  Desktop (Settings → Resources → Memory → 8 GB minimum).
-
-### 9.6 Jenkins credentials ID mismatch
+### 10.1 "Trailing slash" errors in webhook URLs
+### 10.2 Shell "dangling quote" trap
+### 10.3 Nexus "Connection refused" from Jenkins
+### 10.4 Webhook does not trigger Jenkins
+### 10.5 Docker container keeps restarting
+### 10.6 Jenkins credentials ID mismatch
 
 Pipeline error: `git not found` or `enterprise-nexus-credentials not found`?
 
@@ -407,7 +498,7 @@ Pipeline error: `git not found` or `enterprise-nexus-credentials not found`?
 
 ---
 
-## 10. Reset Everything (Clean Slate)
+## 11. Reset Everything (Clean Slate)
 
 If something is broken beyond repair, wipe everything and start fresh:
 
@@ -421,7 +512,7 @@ You will need to redo sections 4.1 through 5.3 after a full reset.
 
 ---
 
-## 11. Quick Reference — Docker Commands
+## 12. Quick Reference — Docker Commands
 
 | Action | Command |
 |--------|---------|
