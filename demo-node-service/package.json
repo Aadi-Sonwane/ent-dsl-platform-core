@@ -1,0 +1,16 @@
+{
+  "name": "demo-node-service",
+  "version": "1.0.0",
+  "description": "Node.js Express Microservice Target",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}
